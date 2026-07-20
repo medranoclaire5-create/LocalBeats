@@ -371,7 +371,17 @@ function EventDetailPage() {
               d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
             />
           </svg>
-          <span>{event.venueName}</span>
+          {event.venueId ? (
+            <Link
+              to="/venues/$venueId"
+              params={{ venueId: event.venueId }}
+              className="text-indigo-600 hover:text-indigo-800"
+            >
+              {event.venueName}
+            </Link>
+          ) : (
+            <span>{event.venueName}</span>
+          )}
         </div>
       )}
 
@@ -391,7 +401,17 @@ function EventDetailPage() {
               d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
             />
           </svg>
-          <span>{event.performerName}</span>
+          {event.performerId ? (
+            <Link
+              to="/performers/$performerId"
+              params={{ performerId: event.performerId }}
+              className="text-indigo-600 hover:text-indigo-800"
+            >
+              {event.performerName}
+            </Link>
+          ) : (
+            <span>{event.performerName}</span>
+          )}
         </div>
       )}
 
