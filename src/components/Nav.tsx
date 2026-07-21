@@ -43,6 +43,12 @@ export function Nav({ user: initialUser }: NavProps) {
 
           {user ? (
             <div className="flex items-center gap-4">
+              <a
+                href="/dashboard"
+                className="text-sm font-medium text-gray-700 transition-colors hover:text-indigo-600"
+              >
+                Dashboard
+              </a>
               <span className="text-sm text-gray-500">
                 {user.displayName}
               </span>
@@ -113,6 +119,12 @@ export function Nav({ user: initialUser }: NavProps) {
           </a>
           {user ? (
             <>
+              <a
+                href="/dashboard"
+                className="block rounded-md px-2 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+              >
+                Dashboard
+              </a>
               <p className="px-2 py-2 text-sm text-gray-500">
                 Signed in as {user.displayName}
               </p>
