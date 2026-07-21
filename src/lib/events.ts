@@ -18,6 +18,36 @@ export interface ReviewSummary {
   createdAt: string;
 }
 
+export interface VenueDetail {
+  id: string;
+  name: string;
+  description: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  phone: string | null;
+  website: string | null;
+  photos: string[];
+  ownerId: string | null;
+  createdAt: string;
+}
+
+export interface PerformerDetail {
+  id: string;
+  name: string;
+  bio: string | null;
+  genre: string | null;
+  photos: string[];
+  videos: string[];
+  socialLinks: Record<string, string>;
+  website: string | null;
+  ownerId: string | null;
+  createdAt: string;
+}
+
 export interface EventFilters {
   eventType?: string;
   dateFrom?: string;
@@ -160,6 +190,168 @@ export const getEvent = createServerFn({ method: "GET" })
       status: String(row.status),
     };
   });
+
+export const getVenue = createServerFn({ method: "GET" })
+  .validator((venueId: string) => venueId)
+  .handler(
+    async ({
+      data: venueId,
+    }: {
+      data: string;
+    }): Promise<{ venue: VenueDetail | null; events: EventSummary[] }> => {
+      const venueQuery = `
+        SELECT
+          id, name, description, address, city, state, zip,
+          latitude, longitude, phone, website, photos, owner_id, created_at
+        FROM venues
+        WHERE id = $1
+        LIMIT 1
+      `;
+
+      const venueRows = await sqlQuery(venueQuery, [venueId]);
+
+      if (venueRows.length === 0) {
+        return { venue: null, events: [] };
+      }
+
+      const v = venueRows[0];
+      const venue: VenueDetail = {
+        id: String(v.id),
+        name: String(v.name),
+        description: v.description ? String(v.description) : null,
+        address: v.address ? String(v.address) : null,
+        city: v.city ? String(v.city) : null,
+        state: v.state ? String(v.state) : null,
+        zip: v.zip ? String(v.zip) : null,
+        latitude: v.latitude != null ? Number(v.latitude) : null,
+        longitude: v.longitude != null ? Number(v.longitude) : null,
+        phone: v.phone ? String(v.phone) : null,
+        website: v.website ? String(v.website) : null,
+        photos: Array.isArray(v.photos) ? v.photos.map(String) : [],
+        ownerId: v.owner_id ? String(v.owner_id) : null,
+        createdAt: String(v.created_at),
+      };
+
+      // Fetch upcoming published events at this venue
+      const eventsQuery = `
+        SELECT
+          e.id, e.title, e.description, e.event_type,
+          e.start_time, e.end_time, e.venue_id,
+          v2.name AS venue_name,
+          e.performer_id, p.name AS performer_name,
+          e.cover_image, e.price_cents, e.capacity, e.status
+        FROM events e
+        LEFT JOIN venues v2 ON e.venue_id = v2.id
+        LEFT JOIN performers p ON e.performer_id = p.id
+        WHERE e.venue_id = $1 AND e.status = 'published'
+        ORDER BY e.start_time ASC
+        LIMIT 50
+      `;
+
+      const eventRows = await sqlQuery(eventsQuery, [venueId]);
+
+      const events: EventSummary[] = eventRows.map((row) => ({
+        id: String(row.id),
+        title: String(row.title),
+        description: row.description ? String(row.description) : null,
+        eventType: String(row.event_type),
+        startTime: String(row.start_time),
+        endTime: row.end_time ? String(row.end_time) : null,
+        venueId: row.venue_id ? String(row.venue_id) : null,
+        venueName: row.venue_name ? String(row.venue_name) : null,
+        performerId: row.performer_id ? String(row.performer_id) : null,
+        performerName: row.performer_name ? String(row.performer_name) : null,
+        coverImage: row.cover_image ? String(row.cover_image) : null,
+        priceCents: row.price_cents != null ? Number(row.price_cents) : null,
+        capacity: row.capacity != null ? Number(row.capacity) : null,
+        status: String(row.status),
+      }));
+
+      return { venue, events };
+    },
+  );
+
+export const getPerformer = createServerFn({ method: "GET" })
+  .validator((performerId: string) => performerId)
+  .handler(
+    async ({
+      data: performerId,
+    }: {
+      data: string;
+    }): Promise<{
+      performer: PerformerDetail | null;
+      events: EventSummary[];
+    }> => {
+      const performerQuery = `
+        SELECT
+          id, name, bio, genre, photos, videos,
+          social_links, website, owner_id, created_at
+        FROM performers
+        WHERE id = $1
+        LIMIT 1
+      `;
+
+      const performerRows = await sqlQuery(performerQuery, [performerId]);
+
+      if (performerRows.length === 0) {
+        return { performer: null, events: [] };
+      }
+
+      const p = performerRows[0];
+      const performer: PerformerDetail = {
+        id: String(p.id),
+        name: String(p.name),
+        bio: p.bio ? String(p.bio) : null,
+        genre: p.genre ? String(p.genre) : null,
+        photos: Array.isArray(p.photos) ? p.photos.map(String) : [],
+        videos: Array.isArray(p.videos) ? p.videos.map(String) : [],
+        socialLinks:
+          p.social_links && typeof p.social_links === "object"
+            ? (p.social_links as Record<string, string>)
+            : {},
+        website: p.website ? String(p.website) : null,
+        ownerId: p.owner_id ? String(p.owner_id) : null,
+        createdAt: String(p.created_at),
+      };
+
+      // Fetch upcoming published events featuring this performer
+      const eventsQuery = `
+        SELECT
+          e.id, e.title, e.description, e.event_type,
+          e.start_time, e.end_time, e.venue_id,
+          v.name AS venue_name,
+          e.performer_id, p2.name AS performer_name,
+          e.cover_image, e.price_cents, e.capacity, e.status
+        FROM events e
+        LEFT JOIN venues v ON e.venue_id = v.id
+        LEFT JOIN performers p2 ON e.performer_id = p2.id
+        WHERE e.performer_id = $1 AND e.status = 'published'
+        ORDER BY e.start_time ASC
+        LIMIT 50
+      `;
+
+      const eventRows = await sqlQuery(eventsQuery, [performerId]);
+
+      const events: EventSummary[] = eventRows.map((row) => ({
+        id: String(row.id),
+        title: String(row.title),
+        description: row.description ? String(row.description) : null,
+        eventType: String(row.event_type),
+        startTime: String(row.start_time),
+        endTime: row.end_time ? String(row.end_time) : null,
+        venueId: row.venue_id ? String(row.venue_id) : null,
+        venueName: row.venue_name ? String(row.venue_name) : null,
+        performerId: row.performer_id ? String(row.performer_id) : null,
+        performerName: row.performer_name ? String(row.performer_name) : null,
+        coverImage: row.cover_image ? String(row.cover_image) : null,
+        priceCents: row.price_cents != null ? Number(row.price_cents) : null,
+        capacity: row.capacity != null ? Number(row.capacity) : null,
+        status: String(row.status),
+      }));
+
+      return { performer, events };
+    },
+  );
 
 export const getEventReviews = createServerFn({ method: "GET" })
   .validator((eventId: string) => eventId)

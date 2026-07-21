@@ -125,7 +125,18 @@ export function EventCard({ event }: { event: EventSummary }) {
                 d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
               />
             </svg>
-            <span className="line-clamp-1">{event.venueName}</span>
+            {event.venueId ? (
+              <Link
+                to="/venues/$venueId"
+                params={{ venueId: event.venueId }}
+                className="line-clamp-1 text-indigo-600 hover:text-indigo-800"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {event.venueName}
+              </Link>
+            ) : (
+              <span className="line-clamp-1">{event.venueName}</span>
+            )}
           </div>
         )}
 
